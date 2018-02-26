@@ -1,0 +1,68 @@
+#! /bin/bash
+
+userfile="$1"
+dry=
+#dry=-dry
+delete=
+#delete=-delete
+
+host1=oldimap.example.com
+port1=993
+host2=newimap.example.com
+port2=993
+
+# admin user/pass for server 1
+authuser1=#"cyrus"
+authpass1=#"cyrus admin pass"
+
+# admin user/pass for server 2
+authuser2=#"cyrus"
+authpass2=#"cyrus admin pass"
+
+[ -f authinfo ] && . authinfo
+
+if [ -z "$userfile" ]; then
+    echo "please supply a file with users to sync\n" >&2
+    exit 1
+fi
+
+cat "$userfile" | while read user1 pass1 user2 pass2; do
+
+    [ -z "$user2" ] && user2="$user1"
+    [ -z "$pass2" ] && pass2="$pass1"
+
+    [ -n "$authuser1" ] && pass1="$authpass1"
+    [ -n "$authuser2" ] && pass2="$authpass2"
+
+    ./imapsync \
+	${dry:+-dry} \
+	${delete:+-delete} \
+	--host1 "$host1" \
+	--port1 "$port1" \
+	--user1 "$user1" \
+	--password1 "$pass1" \
+	${authuser1:+--authuser1 "$authuser1"} \
+	--host2 "$host2" \
+	--port2 "$port2" \
+	--user2 "$user2" \
+        --password2 "$pass2" \
+	${authuser2:+--authuser2 "$authuser2"} q\
+	--ssl1 \
+	--ssl2 \
+	\
+	--allowsizemismatch \
+	--skipsize \
+	--usecache \
+	--useuid \
+	--useheader 'Message-Id' \
+	--useheader 'Message-ID' \
+	--useheader 'Message-id' \
+	--useheader 'message-id' \
+	--useheader 'Received' \
+	--useheader 'Resent-Message-Id' \
+	\
+	--syncinternaldates \
+	--no-releasecheck \
+	| tee move-$user2.log
+
+done
